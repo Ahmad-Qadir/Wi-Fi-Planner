@@ -8,7 +8,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // Serve HTML pages
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'views', 'index.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.post('/calculate', (req, res) => {
