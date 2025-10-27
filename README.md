@@ -38,4 +38,4 @@ A **real-time Wi-Fi RSSI calculator** for network planning, allowing dynamic cal
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/wifi-linkplanner.git
+git clone https://github.com/Ahmad-Qadir/Wi-Fi-Planner.git
