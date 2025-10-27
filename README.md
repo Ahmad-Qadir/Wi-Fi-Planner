@@ -1,4 +1,4 @@
-# Wi-Fi LinkPlanner - Numeric RSSI Calculator
+# Wi-Fi Planner - Numeric RSSI Calculator
 
 [![HTML5](https://img.shields.io/badge/HTML5-%23E34F26.svg?&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3.3-purple?logo=bootstrap&logoColor=white)](https://getbootstrap.com/)
