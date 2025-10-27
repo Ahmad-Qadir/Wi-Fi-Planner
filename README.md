@@ -1,6 +1,5 @@
 # Wi-Fi LinkPlanner - Numeric RSSI Calculator
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![HTML5](https://img.shields.io/badge/HTML5-%23E34F26.svg?&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3.3-purple?logo=bootstrap&logoColor=white)](https://getbootstrap.com/)
 
@@ -25,23 +24,12 @@ A **real-time Wi-Fi RSSI calculator** for network planning, allowing dynamic cal
 - **Bootstrap 5 UI** – Clean, responsive, and mobile-friendly.
 - **Lightweight** – Fully client-side, no backend required.
 
----
-
-## 🔹 Live Demo
-
-You can try it directly in your browser:
-
-[Open Demo](https://yourusername.github.io/wifi-linkplanner/index.html)  
-
-*Replace the URL with your GitHub Pages link after deployment.*
 
 ---
 
 ## 🔹 Screenshots
 
-![Wi-Fi LinkPlanner Screenshot](https://via.placeholder.com/800x400?text=Wi-Fi+LinkPlanner+Screenshot)
-
-*Replace with your actual screenshots.*
+<img width="1920" height="918" alt="image" src="https://github.com/user-attachments/assets/fd410c82-c994-4e62-b75a-65fdb13207a4" />
 
 ---
 
