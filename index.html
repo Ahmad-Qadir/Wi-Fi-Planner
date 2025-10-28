@@ -3,52 +3,43 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Wi-Fi LinkPlanner — Floor Grid Simulation</title>
+<title>Wi-Fi LinkPlanner — Freehand Walls, RSSI Numbers, Optimized Auto-Place</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 
 <style>
-  body { padding: 1.5rem; background:#f8f9fa; }
-  .controls { background: white; padding: 1rem; border-radius: .5rem; box-shadow: 0 0 10px rgba(0,0,0,0.04); }
-  .grid-wrap { overflow:auto; background: white; padding: 1rem; border-radius: .5rem; box-shadow: 0 0 10px rgba(0,0,0,0.04); }
-  .grid { display: inline-block; border: 1px solid #ddd; }
-  .cell { width: 28px; height: 28px; display:inline-flex; justify-content:center; align-items:center; margin:1px; font-size:10px; color:#fff; border-radius:4px; cursor: pointer; user-select:none; }
-  .cell.wall { background:#6c757d; color:white; font-weight:600; }
-  .cell.ap { outline: 2px solid #000; background: #e0f7fa; color: #000; font-weight:700; }
-  .rssi-tooltip { font-size:11px; }
-  .legend-dot { display:inline-block; width:14px; height:14px; vertical-align:middle; margin-right:6px; border-radius:3px; }
-  .summary { margin-top:.5rem; }
-  /* colors for RSSI */
-  .strong { background: #28a745; }
-  .medium { background: #ffc107; color:#000; }
-  .weak { background: #dc3545; }
-  .no-signal { background: #6c757d; }
-  .controls .small { font-size:.85rem; color:#6c757d; }
+  body { padding: 12px; background:#f6f7fb; }
+  .controls { background:#fff; padding:14px; border-radius:8px; box-shadow:0 6px 16px rgba(11,22,48,0.06); }
+  .grid-wrap { background:#fff; padding:12px; border-radius:8px; box-shadow:0 6px 16px rgba(11,22,48,0.06); min-height:560px; }
+  #simCanvas { background:#fff; border:1px solid #ddd; display:block; cursor: crosshair; }
+  .mode-btn{ margin-right:6px; }
+  .btn-mode-active{ box-shadow:0 0 0 0.22rem rgba(13,110,253,0.12); }
+  .legend-bar{ width:200px; height:14px; border-radius:6px; background:linear-gradient(90deg,#dc3545,#ffc107,#28a745); border:1px solid #ccc; }
+  .small-muted{ font-size:.86rem; color:#6c757d; }
+  .footer-note{ font-size:.83rem; color:#6c757d; margin-top:8px; }
 </style>
 </head>
 <body>
-<div class="container">
+<div class="container-fluid">
   <div class="row g-3">
-    <div class="col-lg-4">
+    <div class="col-lg-3">
       <div class="controls">
-        <h4>Wi-Fi LinkPlanner</h4>
-        <p class="small">Draw room size, place AP (click a cell), place walls (click cell to toggle), and inspect RSSI per cell.</p>
+        <h5>Wi-Fi LinkPlanner (Freehand walls + RSSI numbers)</h5>
+        <p class="small-muted">Draw walls freehand, place multiple APs, view per-cell RSSI & heatmap, export PNG, and optimize AP placement.</p>
 
         <div class="mb-2">
-          <label class="form-label">Room width (m)</label>
-          <input id="roomWidth" type="number" class="form-control" value="10" min="3" step="1">
+          <label class="form-label">Room Width (m)</label>
+          <input id="roomW" class="form-control" type="number" value="10" min="2" step="0.5">
         </div>
-
         <div class="mb-2">
-          <label class="form-label">Room height (m)</label>
-          <input id="roomHeight" type="number" class="form-control" value="8" min="3" step="1">
+          <label class="form-label">Room Height (m)</label>
+          <input id="roomH" class="form-control" type="number" value="8" min="2" step="0.5">
         </div>
-
         <div class="mb-2">
-          <label class="form-label">Cell size (m) — cell represents 1 cell² meters</label>
+          <label class="form-label">Cell Size (m)</label>
           <select id="cellSize" class="form-select">
-            <option value="1" selected>1 m</option>
+            <option value="1">1 m</option>
             <option value="0.5">0.5 m</option>
             <option value="0.25">0.25 m</option>
           </select>
@@ -58,17 +49,22 @@
 
         <div class="mb-2">
           <label class="form-label">AP Transmit Power (dBm)</label>
-          <input id="Ptx" type="range" min="5" max="30" value="20" class="form-range">
+          <input id="Ptx" type="range" class="form-range" min="5" max="30" value="20">
           <div class="d-flex justify-content-between">
-            <small id="PtxVal">20 dBm</small>
-            <small class="small">Change to see realtime update</small>
+            <small id="PtxVal">20 dBm</small><small class="small-muted">Realtime update</small>
           </div>
         </div>
 
         <div class="mb-2">
+          <label for="numUsers" class="form-label">Expected Number of Users:</label>
+          <input type="number" id="numUsers" class="form-control" min="1" value="20">
+        </div>
+
+
+        <div class="mb-2">
           <label class="form-label">Frequency</label>
           <select id="freq" class="form-select">
-            <option value="2400" selected>2.4 GHz</option>
+            <option value="2400">2.4 GHz</option>
             <option value="5000">5 GHz</option>
           </select>
         </div>
@@ -76,341 +72,772 @@
         <hr>
 
         <div class="mb-2">
-          <label class="form-label">Wall type to place</label>
+          <label class="form-label">Wall Type (loss dB)</label>
           <select id="wallType" class="form-select">
-            <option value="15" selected>Concrete — 15 dB</option>
+            <option value="15">Concrete — 15 dB</option>
             <option value="7">Glass — 7 dB</option>
             <option value="5">Plastic — 5 dB</option>
           </select>
         </div>
 
-        <div class="d-grid gap-2">
+        <div class="mb-2">
+          <label class="form-label">Mode</label>
+          <div>
+            <button id="modeAddAP" class="btn btn-sm btn-outline-primary mode-btn">Add AP</button>
+            <button id="modeMoveAP" class="btn btn-sm btn-outline-secondary mode-btn">Move AP</button>
+            <button id="modeEraseAP" class="btn btn-sm btn-outline-danger mode-btn">Erase AP</button>
+            <button id="modeDrawWall" class="btn btn-sm btn-outline-dark mode-btn">Draw Wall</button>
+            <button id="modeEraseWall" class="btn btn-sm btn-outline-dark mode-btn">Erase Wall</button>
+          </div>
+        </div>
+
+        <div class="mb-2 d-grid gap-2">
           <button id="generateBtn" class="btn btn-primary">Generate Grid</button>
           <button id="clearWallsBtn" class="btn btn-outline-secondary">Clear Walls</button>
-          <button id="resetBtn" class="btn btn-outline-danger">Reset AP & Walls</button>
+          <button id="clearAllBtn" class="btn btn-outline-danger">Reset APs & Walls</button>
         </div>
+
+        <div class="mb-2">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text">Auto-place APs</span>
+            <input id="autoCount" type="number" class="form-control" value="2" min="1" max="10">
+            <button id="autoPlaceBtn" class="btn btn-outline-success">Run</button>
+          </div>
+          <div class="small-muted mt-1">Greedy + local refinement optimizer.</div>
+        </div>
+
+        <div class="mb-2 d-grid gap-2">
+          <button id="exportBtn" class="btn btn-outline-primary">Export Heatmap PNG</button>
+          <button id="fitBtn" class="btn btn-outline-secondary">Fit to View</button>
+        </div>
+        
+
 
         <hr>
 
-        <div class="summary">
-          <div><strong>Mode:</strong> <span id="modeLabel">Place AP / Toggle wall</span></div>
-          <div class="mt-2"><strong>Summary</strong></div>
-          <div class="mt-1">
-            <span class="legend-dot strong"></span> <small>Strong (&gt; -65 dBm)</small><br>
-            <span class="legend-dot medium" style="background:#ffc107"></span> <small>Medium (-75 to -65 dBm)</small><br>
-            <span class="legend-dot weak"></span> <small>Weak (&le; -75 dBm)</small><br>
-            <span class="legend-dot no-signal" style="background:#6c757d"></span> <small>Wall cell / No signal</small>
-          </div>
-
-          <div class="mt-3">
-            <p class="mb-1 small">Total cells: <span id="totalCells">0</span></p>
-            <p class="mb-1 small">Strong cells: <span id="countStrong">0</span></p>
-            <p class="mb-1 small">Medium cells: <span id="countMedium">0</span></p>
-            <p class="mb-1 small">Weak cells: <span id="countWeak">0</span></p>
-            <p class="mb-1 small">Walls placed: <span id="wallCount">0</span></p>
+        <div class="d-flex align-items-center gap-2">
+          <div class="legend-bar" id="legendBar"></div>
+          <div>
+            <div class="small-muted">-95 dBm</div>
+            <div class="small-muted">-65 dBm</div>
+            <div class="small-muted">-35 dBm</div>
           </div>
         </div>
 
-        <hr>
-        <div class="small text-muted">Instructions: Click "Generate Grid", click any cell to place the AP (only one AP allowed). Click other cells to toggle walls. AP cell cannot be wall. Change sliders / settings to update RSSI in real time.</div>
+        <div class="mt-2">
+          <div class="small-muted">Stats:</div>
+          <div>Cells: <span id="statTotal">0</span></div>
+          <div>Strong (> -65 dBm): <span id="statStrong">0</span></div>
+          <div>Medium (-75 to -65): <span id="statMedium">0</span></div>
+          <div>Weak (≤ -75): <span id="statWeak">0</span></div>
+          <div>Walls: <span id="statWalls">0</span></div>
+          <div>APs: <span id="statAps">0</span></div>
+        </div>
+
+        <div class="footer-note">Tip: Use Draw Wall to drag continuous walls. Use Auto-place for optimized AP positions. Export PNG to save results.</div>
       </div>
     </div>
 
-    <div class="col-lg-8">
+    <div class="col-lg-9">
       <div class="grid-wrap">
-        <div id="gridContainer" class="d-flex justify-content-center align-items-center" style="min-height: 400px;">
-          <!-- grid generated here -->
-        </div>
+        <canvas id="simCanvas"></canvas>
       </div>
+      <div class="results mt-3"></div>
     </div>
   </div>
 </div>
 
 <script>
-/*
-  Client-side simulation script
-  - grid is width x height measured in meters, cellSize meters per cell (square)
-  - cells are arranged with (cols = Math.ceil(width / cellSize), rows = Math.ceil(height / cellSize))
-  - place AP by clicking a cell (single AP)
-  - toggle walls by clicking non-AP cells
-  - walls are stored as per-cell wallLoss (0=oent)
-  - when computing RSSI for a target cell, we step along the line from AP cell to target cell and sum wall losses of any crossed cells (Bresenham-like)
-  - FSPL uses distance (meters -> km) and frequency (MHz)
+/* Full client-side advanced simulator with freehand walls, RSSI numbers, and optimized auto-placement.
+   - Multi APs: array aps {xIndex,yIndex,ptx}
+   - Walls: array polylines; each polyline = array of points in grid-index space + loss
+   - Freehand drawing records mousemove points and stores as segments
+   - For intersection: check segment intersections with wall segments (all polyline segments)
+   - Auto placement: greedy then local refinement (hill-climb on AP positions)
 */
+
+// ----- DOM refs -----
+const simCanvas = document.getElementById('simCanvas');
+const ctx = simCanvas.getContext('2d');
+
+const roomW = document.getElementById('roomW');
+const roomH = document.getElementById('roomH');
+const cellSizeSel = document.getElementById('cellSize');
+const PtxInput = document.getElementById('Ptx');
+const PtxVal = document.getElementById('PtxVal');
+const freqSel = document.getElementById('freq');
+const wallTypeSel = document.getElementById('wallType');
+
+const modeAddAP = document.getElementById('modeAddAP');
+const modeMoveAP = document.getElementById('modeMoveAP');
+const modeEraseAP = document.getElementById('modeEraseAP');
+const modeDrawWall = document.getElementById('modeDrawWall');
+const modeEraseWall = document.getElementById('modeEraseWall');
 
 const generateBtn = document.getElementById('generateBtn');
 const clearWallsBtn = document.getElementById('clearWallsBtn');
-const resetBtn = document.getElementById('resetBtn');
-const PtxInput = document.getElementById('Ptx');
-const PtxVal = document.getElementById('PtxVal');
-const freqSelect = document.getElementById('freq');
-const wallTypeSelect = document.getElementById('wallType');
-const gridContainer = document.getElementById('gridContainer');
-const roomWidthInput = document.getElementById('roomWidth');
-const roomHeightInput = document.getElementById('roomHeight');
-const cellSizeSelect = document.getElementById('cellSize');
+const clearAllBtn = document.getElementById('clearAllBtn');
+const autoPlaceBtn = document.getElementById('autoPlaceBtn');
+const autoCount = document.getElementById('autoCount');
+const exportBtn = document.getElementById('exportBtn');
+const fitBtn = document.getElementById('fitBtn');
 
-const totalCellsEl = document.getElementById('totalCells');
-const countStrongEl = document.getElementById('countStrong');
-const countMediumEl = document.getElementById('countMedium');
-const countWeakEl = document.getElementById('countWeak');
-const wallCountEl = document.getElementById('wallCount');
+const statTotal = document.getElementById('statTotal');
+const statStrong = document.getElementById('statStrong');
+const statMedium = document.getElementById('statMedium');
+const statWeak = document.getElementById('statWeak');
+const statWalls = document.getElementById('statWalls');
+const statAps = document.getElementById('statAps');
 
-let grid = []; // 2D array of cell objects
+const legendBar = document.getElementById('legendBar');
+
+let W = 10, H = 8, cellSize = 1;
 let cols = 0, rows = 0;
-let ap = null; // {x, y}
-let cellSize = parseFloat(cellSizeSelect.value);
+let cells = []; // {xIndex,yIndex,cx,cy,rssi,bestAPIndex}
+let aps = [];   // {xIndex,yIndex,ptx}
+let walls = []; // {points:[{x,y},...], loss} store in grid-index coordinates
 
-PtxVal.textContent = PtxInput.value + ' dBm';
+// canvas & drawing params
+let pad = 20;
+let scale = 40;
+let RSSI_MIN = -95, RSSI_MAX = -35;
 
-PtxInput.addEventListener('input', () => {
-  PtxVal.textContent = PtxInput.value + ' dBm';
-  renderGrid(); // realtime update
-});
-freqSelect.addEventListener('change', renderGrid);
-wallTypeSelect.addEventListener('change', () => {});
-roomWidthInput.addEventListener('change', ()=>{});
-roomHeightInput.addEventListener('change', ()=>{});
-cellSizeSelect.addEventListener('change', ()=>{
-  cellSize = parseFloat(cellSizeSelect.value);
-});
+let mode = 'addAP';
+function setMode(m){
+  mode = m;
+  [modeAddAP,modeMoveAP,modeEraseAP,modeDrawWall,modeEraseWall].forEach(b=>b.classList.remove('btn-mode-active'));
+  if (m==='addAP') modeAddAP.classList.add('btn-mode-active');
+  if (m==='moveAP') modeMoveAP.classList.add('btn-mode-active');
+  if (m==='eraseAP') modeEraseAP.classList.add('btn-mode-active');
+  if (m==='drawWall') modeDrawWall.classList.add('btn-mode-active');
+  if (m==='eraseWall') modeEraseWall.classList.add('btn-mode-active');
+}
+modeAddAP.addEventListener('click', ()=> setMode('addAP'));
+modeMoveAP.addEventListener('click', ()=> setMode('moveAP'));
+modeEraseAP.addEventListener('click', ()=> setMode('eraseAP'));
+modeDrawWall.addEventListener('click', ()=> setMode('drawWall'));
+modeEraseWall.addEventListener('click', ()=> setMode('eraseWall'));
 
-generateBtn.addEventListener('click', () => {
-  createGrid();
-  renderGrid();
-});
+// mouse state
+let isMouseDown = false;
+let currentPoly = null;
+let moveAPIndex = null;
 
-clearWallsBtn.addEventListener('click', () => {
-  for (let r=0;r<rows;r++){
-    for (let c=0;c<cols;c++){
-      grid[r][c].wallLoss = 0;
-    }
-  }
-  ap = null;
-  updateSummary();
-  renderGrid();
-});
-
-resetBtn.addEventListener('click', () => {
-  ap = null;
-  for (let r=0;r<rows;r++){
-    for (let c=0;c<cols;c++){
-      grid[r][c].wallLoss = 0;
-    }
-  }
-  renderGrid();
-});
-
-function createGrid(){
-  const width = Math.max(1, parseFloat(roomWidthInput.value));
-  const height = Math.max(1, parseFloat(roomHeightInput.value));
-  cellSize = parseFloat(cellSizeSelect.value);
-
-  cols = Math.max(3, Math.ceil(width / cellSize));
-  rows = Math.max(3, Math.ceil(height / cellSize));
-
-  grid = [];
-  for (let r=0;r<rows;r++){
-    const row = [];
-    for (let c=0;c<cols;c++){
-      row.push({
-        x: c,
-        y: r,
-        wallLoss: 0,   // 0 if no wall, otherwise dB
-        el: null       // DOM element
-      });
-    }
-    grid.push(row);
-  }
-
-  // reset AP
-  ap = null;
-
-  // build DOM
-  buildGridDOM();
-  updateSummary();
+// helpers
+function fitCanvas(){
+  const maxWidth = Math.max(600, window.innerWidth - 460);
+  const maxHeight = Math.max(400, window.innerHeight - 160);
+  scale = Math.floor(Math.min((maxWidth - 2*pad) / cols, (maxHeight - 2*pad) / rows));
+  scale = Math.max(10, Math.min(50, scale));
+  simCanvas.width = pad*2 + cols*scale;
+  simCanvas.height = pad*2 + rows*scale;
+  draw();
 }
 
-function buildGridDOM(){
-  gridContainer.innerHTML = '';
-  const gridEl = document.createElement('div');
-  gridEl.className = 'grid';
-  gridEl.style.padding = '8px';
-  gridEl.style.background = '#fff';
-  gridEl.style.display = 'inline-block';
+function toPixelX(ix){ return pad + ix*scale + scale/2; }
+function toPixelY(iy){ return pad + iy*scale + scale/2; }
+function pixelToIndex(px, py){
+  const ix = Math.floor((px - pad) / scale);
+  const iy = Math.floor((py - pad) / scale);
+  if (ix < 0 || iy < 0 || ix >= cols || iy >= rows) return null;
+  return {ix, iy};
+}
 
-  for (let r=0;r<rows;r++){
-    const rowWrap = document.createElement('div');
-    for (let c=0;c<cols;c++){
-      const cell = document.createElement('div');
-      cell.className = 'cell noselect';
-      cell.style.width = (28) + 'px';
-      cell.style.height = (28) + 'px';
-      cell.dataset.x = c;
-      cell.dataset.y = r;
-      cell.title = `Cell ${c},${r}`;
-
-      // click handler: if AP not set, set AP; else toggle wall (unless clicking AP)
-      cell.addEventListener('click', (ev)=>{
-        const cx = parseInt(cell.dataset.x);
-        const cy = parseInt(cell.dataset.y);
-        const clicked = grid[cy][cx];
-
-        if (!ap){
-          // set AP
-          ap = { x: cx, y: cy };
-          cell.classList.add('ap');
-          cell.textContent = 'AP';
-        } else {
-          // if clicking AP again -> remove AP
-          if (ap.x === cx && ap.y === cy) {
-            ap = null;
-          } else {
-            // toggle wall at clicked cell (AP cell cannot be wall)
-            if (!(ap.x === cx && ap.y === cy)){
-              const loss = parseFloat(wallTypeSelect.value);
-              if (clicked.wallLoss === 0){
-                clicked.wallLoss = loss;
-                cell.classList.add('wall');
-                cell.textContent = 'W';
-              } else {
-                clicked.wallLoss = 0;
-                cell.classList.remove('wall');
-                cell.textContent = '';
-              }
-            }
-          }
-        }
-        renderGrid();
-      });
-
-      rowWrap.appendChild(cell);
-      grid[r][c].el = cell;
+function generateGrid(){
+  W = Math.max(1, parseFloat(roomW.value) || 10);
+  H = Math.max(1, parseFloat(roomH.value) || 8);
+  cellSize = parseFloat(cellSizeSel.value) || 1;
+  cols = Math.max(3, Math.ceil(W / cellSize));
+  rows = Math.max(3, Math.ceil(H / cellSize));
+  cells = [];
+  for (let y=0;y<rows;y++){
+    for (let x=0;x<cols;x++){
+      const cx = (x + 0.5) * cellSize;
+      const cy = (y + 0.5) * cellSize;
+      cells.push({xIndex:x,yIndex:y,cx,cy,rssi:null,bestAP:null});
     }
-    gridEl.appendChild(rowWrap);
   }
-  gridContainer.appendChild(gridEl);
+  fitCanvas();
+  draw();
 }
 
-// Bresenham line algorithm to step through cells between two points
-function bresenham(x0, y0, x1, y1){
-  const points = [];
-  let dx = Math.abs(x1 - x0);
-  let dy = Math.abs(y1 - y0);
-  let sx = (x0 < x1) ? 1 : -1;
-  let sy = (y0 < y1) ? 1 : -1;
-  let err = dx - dy;
+function draw(){
+  if (!simCanvas) return;
+  ctx.clearRect(0,0,simCanvas.width,simCanvas.height);
+  // background
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(pad-2, pad-2, cols*scale+4, rows*scale+4);
 
-  while(true){
-    points.push({x: x0, y: y0});
-    if (x0 === x1 && y0 === y1) break;
-    let e2 = err * 2;
-    if (e2 > -dy) { err -= dy; x0 += sx; }
-    if (e2 < dx)  { err += dx; y0 += sy; }
+  // compute heatmap colors (cells should already have rssi)
+  for (const c of cells){
+    const px = pad + c.xIndex*scale;
+    const py = pad + c.yIndex*scale;
+    const w = scale-2, h = scale-2;
+    if (c.rssi === null) ctx.fillStyle = '#f1f3f5';
+    else ctx.fillStyle = rssiToColor(c.rssi);
+    ctx.fillRect(px+1, py+1, w, h);
   }
-  return points;
+
+  // draw grid lines
+  ctx.strokeStyle = '#e6edf3';
+  ctx.lineWidth = 1;
+  for (let i=0;i<=cols;i++){
+    ctx.beginPath(); ctx.moveTo(pad + i*scale, pad); ctx.lineTo(pad + i*scale, pad + rows*scale); ctx.stroke();
+  }
+  for (let j=0;j<=rows;j++){
+    ctx.beginPath(); ctx.moveTo(pad, pad + j*scale); ctx.lineTo(pad + cols*scale, pad + j*scale); ctx.stroke();
+  }
+
+  // draw walls (polylines)
+  for (const w of walls){
+    ctx.beginPath();
+    ctx.strokeStyle = '#6c757d';
+    ctx.lineWidth = Math.max(3, w.loss/4);
+    const p0 = w.points[0];
+    ctx.moveTo(toPixelX(p0.x), toPixelY(p0.y));
+    for (let i=1;i<w.points.length;i++){
+      const p = w.points[i];
+      ctx.lineTo(toPixelX(p.x), toPixelY(p.y));
+    }
+    ctx.stroke();
+  }
+
+  // draw APs
+  aps.forEach((a, idx)=>{
+    const px = toPixelX(a.xIndex), py = toPixelY(a.yIndex);
+    ctx.beginPath(); ctx.fillStyle = '#0d6efd'; ctx.arc(px, py, Math.max(6, scale*0.2), 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = `${Math.max(10, scale*0.18)}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('AP'+(idx+1), px, py);
+  });
+
+  // draw RSSI numbers
+  ctx.fillStyle = '#fff';
+  ctx.font = `${Math.max(9, scale*0.18)}px sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  for (const c of cells){
+    if (c.rssi === null) continue;
+    const px = toPixelX(c.xIndex), py = toPixelY(c.yIndex);
+    ctx.fillStyle = getTextColorForBg(rssiToColor(c.rssi));
+    ctx.fillText(Math.round(c.rssi), px, py);
+  }
+
+  // footer info
+  ctx.fillStyle = '#333';
+  ctx.font = '12px sans-serif';
+  ctx.fillText(`Room ${W}m×${H}m • Cell ${cellSize}m • Grid ${cols}×${rows}`, 14, simCanvas.height - 10);
 }
 
-function calculateCellRSSI(cellX, cellY){
-  if (!ap) return null;
+// color mapping (smooth)
+function rssiToColor(rssi){
+  if (rssi === null) return '#f1f3f5';
+  const v = Math.max(RSSI_MIN, Math.min(RSSI_MAX, rssi));
+  const norm = (v - RSSI_MIN) / (RSSI_MAX - RSSI_MIN);
+  // two-segment gradient: red->yellow->green
+  let r,g,b;
+  if (norm < 0.5){
+    const t = norm/0.5;
+    r = 220; g = Math.round(60 + (200-60)*t); b = 60;
+  } else {
+    const t = (norm-0.5)/0.5;
+    r = Math.round(220 - (220-40)*t); g = Math.round(200 - (200-160)*t); b = 60;
+  }
+  return `rgb(${r},${g},${b})`;
+}
+function getTextColorForBg(rgb){ // choose black or white based on luminance
+  const m = rgb.match(/(\d+),\s*(\d+),\s*(\d+)/);
+  if (!m) return '#000';
+  const r = +m[1], g = +m[2], b = +m[3];
+  const lum = 0.2126*r + 0.7152*g + 0.0722*b;
+  return lum > 150 ? '#000' : '#fff';
+}
 
-  // distance in meters between centers
-  const dx = (cellX - ap.x) * cellSize;
-  const dy = (cellY - ap.y) * cellSize;
-  let distance = Math.sqrt(dx*dx + dy*dy);
+// compute RSSI for each cell: for each AP compute rssi and pick max
+function computeRSSI(){
+  for (const c of cells) { c.rssi = null; c.bestAP = null; }
+  for (let i=0;i<aps.length;i++){
+    const a = aps[i];
+    for (const c of cells){
+      const res = rssiFromAPToCell(a, c);
+      if (c.rssi === null || res.rssi > c.rssi){
+        c.rssi = res.rssi; c.bestAP = i;
+      }
+    }
+  }
+  updateStats();
+}
 
-  // if same cell, use a minimum distance to avoid infinite FSPL
-  if (distance < 0.5) distance = 0.5;
-
-  // count walls crossed along path
-  const path = bresenham(ap.x, ap.y, cellX, cellY);
-
-  // exclude ap cell (path[0]) and target cell? include walls encountered excluding AP cell
+// rssi for AP->cell, including wall intersection sums
+function rssiFromAPToCell(ap, cell){
+  // positions in meters
+  const apX = (ap.xIndex + 0.5) * cellSize;
+  const apY = (ap.yIndex + 0.5) * cellSize;
+  const cx = cell.cx, cy = cell.cy;
+  let dist = Math.hypot(cx - apX, cy - apY);
+  if (dist < 0.5) dist = 0.5;
+  // sum wall losses by checking intersection of AP-cell segment with each wall polyline segment
   let totalWallLoss = 0;
-  for (let p of path){
-    // skip the AP cell itself
-    if (p.x === ap.x && p.y === ap.y) continue;
-    // if we reach target cell, include its wallLoss (so a wall on the target cell blocks)
-    if (grid[p.y] && grid[p.y][p.x]){
-      totalWallLoss += grid[p.y][p.x].wallLoss;
+  for (const poly of walls){
+    for (let k=1;k<poly.points.length;k++){
+      const p1 = poly.points[k-1], p2 = poly.points[k];
+      // segment in meters
+      const wx1 = (p1.x + 0.5) * cellSize, wy1 = (p1.y + 0.5) * cellSize;
+      const wx2 = (p2.x + 0.5) * cellSize, wy2 = (p2.y + 0.5) * cellSize;
+      if (segmentIntersect(apX,apY,cx,cy, wx1,wy1,wx2,wy2)){
+        totalWallLoss += poly.loss;
+      }
     }
   }
-
-  // FSPL
-  const Ptx = parseFloat(PtxInput.value);
-  const freq = parseFloat(freqSelect.value); // MHz
-  const d_km = distance / 1000;
-  const fspl = 20 * Math.log10(d_km) + 20 * Math.log10(freq) + 32.44;
-
+  const Ptx = ap.ptx;
+  const freq = parseFloat(freqSel.value);
+  const d_km = dist/1000;
+  const fspl = 20*Math.log10(d_km) + 20*Math.log10(freq) + 32.44;
   const rssi = Ptx - fspl - totalWallLoss;
-  return { rssi, distance, totalWallLoss, fspl };
+  return {rssi, dist, totalWallLoss, fspl};
 }
 
-function renderGrid(){
-  if (!grid || grid.length === 0) return;
+// segment intersection (robust float)
+function segmentIntersect(x1,y1,x2,y2,x3,y3,x4,y4){
+  // based on orientation
+  function orient(ax,ay,bx,by,cx,cy){ return (bx-ax)*(cy-ay) - (by-ay)*(cx-ax); }
+  const o1 = orient(x1,y1,x2,y2,x3,y3);
+  const o2 = orient(x1,y1,x2,y2,x4,y4);
+  const o3 = orient(x3,y3,x4,y4,x1,y1);
+  const o4 = orient(x3,y3,x4,y4,x2,y2);
+  if ((o1*o2 < 0) && (o3*o4 < 0)) return true;
+  return false;
+}
 
-  let strong=0, medium=0, weak=0, walls=0;
-  for (let r=0;r<rows;r++){
-    for (let c=0;c<cols;c++){
-      const cellObj = grid[r][c];
-      const el = cellObj.el;
-      el.classList.remove('strong','medium','weak','no-signal','ap','wall');
-      el.textContent = '';
-
-      if (ap && ap.x === c && ap.y === r) {
-        el.classList.add('ap');
-        el.textContent = 'AP';
-        continue;
+// UI interactions: mouse events for freehand drawing and placing APs/moving them
+simCanvas.addEventListener('mousedown', (e)=>{
+  isMouseDown = true;
+  const rect = simCanvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const idx = pixelToIndex(mx,my);
+  if (!idx) return;
+  if (mode === 'addAP'){
+    aps.push({xIndex: idx.ix, yIndex: idx.iy, ptx: parseFloat(PtxInput.value)});
+    computeRSSI(); draw();
+  } else if (mode === 'moveAP'){
+    // find AP at clicked cell
+    const found = aps.findIndex(a=>a.xIndex===idx.ix && a.yIndex===idx.iy);
+    if (found >=0) moveAPIndex = found;
+  } else if (mode === 'eraseAP'){
+    const found = aps.findIndex(a=>a.xIndex===idx.ix && a.yIndex===idx.iy);
+    if (found >=0){
+      aps.splice(found,1); computeRSSI(); draw();
+    }
+  } else if (mode === 'drawWall'){
+    // start polyline
+    currentPoly = { points: [{x: idx.ix, y: idx.iy}], loss: parseFloat(wallTypeSel.value) };
+  } else if (mode === 'eraseWall'){
+    // remove any wall polyline if clicked point is near any segment
+    const px = (idx.ix + 0.5)*cellSize, py = (idx.iy + 0.5)*cellSize;
+    let removed = false;
+    for (let i=walls.length-1;i>=0;i--){
+      const poly = walls[i];
+      for (let s=1;s<poly.points.length;s++){
+        const a = poly.points[s-1], b = poly.points[s];
+        const wx1 = (a.x+0.5)*cellSize, wy1 = (a.y+0.5)*cellSize;
+        const wx2 = (b.x+0.5)*cellSize, wy2 = (b.y+0.5)*cellSize;
+        const d = distancePointToSegment(px,py, wx1,wy1,wx2,wy2);
+        if (d < cellSize*0.6){ walls.splice(i,1); removed=true; break; }
       }
+      if (removed) break;
+    }
+    if (removed){ computeRSSI(); draw(); }
+  }
+});
 
-      if (cellObj.wallLoss && cellObj.wallLoss > 0){
-        el.classList.add('wall');
-        el.textContent = 'W';
-        walls++;
-        // treat wall cell as no-signal visually, but still include in counts? We show as no-signal
-        el.classList.add('no-signal');
-        el.title = `Wall: ${cellObj.wallLoss} dB`;
-        continue;
-      }
-
-      const data = calculateCellRSSI(c, r);
-      if (!data){
-        el.classList.add('no-signal');
-        el.title = `No AP placed`;
-        continue;
-      }
-
-      const rssi = data.rssi;
-      const tooltip = `RSSI: ${rssi.toFixed(2)} dBm\nDist: ${data.distance.toFixed(2)} m\nWallLoss: ${data.totalWallLoss} dB\nFSPL: ${data.fspl.toFixed(2)} dB`;
-      el.title = tooltip;
-
-      if (rssi > -65){
-        el.classList.add('strong');
-        strong++;
-      } else if (rssi > -75){
-        el.classList.add('medium');
-        medium++;
-      } else {
-        el.classList.add('weak');
-        weak++;
-      }
-
-      // show small value inside cell (rounded)
-      el.textContent = Math.round(rssi);
+simCanvas.addEventListener('mousemove', (e)=>{
+  if (!isMouseDown) return;
+  const rect = simCanvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const idx = pixelToIndex(mx,my);
+  if (!idx) return;
+  if (mode === 'moveAP' && moveAPIndex !== null){
+    aps[moveAPIndex].xIndex = idx.ix; aps[moveAPIndex].yIndex = idx.iy;
+    computeRSSI(); draw();
+  } else if (mode === 'drawWall' && currentPoly){
+    // add point if moved into new cell
+    const last = currentPoly.points[currentPoly.points.length-1];
+    if (last.x !== idx.ix || last.y !== idx.iy){
+      currentPoly.points.push({x: idx.ix, y: idx.iy});
+      // draw temporary
+      draw();
+      // draw polyline preview
+      ctx.beginPath(); ctx.strokeStyle = '#6c757d'; ctx.lineWidth = Math.max(3, currentPoly.loss/4);
+      const p0 = currentPoly.points[0];
+      ctx.moveTo(toPixelX(p0.x), toPixelY(p0.y));
+      for (let i=1;i<currentPoly.points.length;i++){ const p=currentPoly.points[i]; ctx.lineTo(toPixelX(p.x), toPixelY(p.y)); }
+      ctx.stroke();
     }
   }
+});
 
-  totalCellsEl.textContent = (rows*cols);
-  countStrongEl.textContent = strong;
-  countMediumEl.textContent = medium;
-  countWeakEl.textContent = weak;
-  wallCountEl.textContent = walls;
+simCanvas.addEventListener('mouseup', (e)=>{
+  isMouseDown = false;
+  if (mode === 'drawWall' && currentPoly){
+    if (currentPoly.points.length > 1) walls.push(currentPoly);
+    currentPoly = null;
+    computeRSSI(); draw();
+  }
+  moveAPIndex = null;
+});
+
+// helpers for erase/geometry
+function distancePointToSegment(px,py, x1,y1,x2,y2){
+  const l2 = (x2-x1)*(x2-x1) + (y2-y1)*(y2-y1);
+  if (l2 === 0) return Math.hypot(px-x1, py-y1);
+  let t = ((px-x1)*(x2-x1) + (py-y1)*(y2-y1)) / l2;
+  t = Math.max(0, Math.min(1, t));
+  const projx = x1 + t*(x2-x1), projy = y1 + t*(y2-y1);
+  return Math.hypot(px-projx, py-projy);
 }
 
-// initial grid generation
-createGrid();
-renderGrid();
+// export PNG: draw offscreen at higher resolution then save
+function exportPNG(){
+  const scaleExport = 2;
+  const oc = document.createElement('canvas'); oc.width = simCanvas.width*scaleExport; oc.height = simCanvas.height*scaleExport;
+  const octx = oc.getContext('2d');
+  octx.scale(scaleExport, scaleExport);
+  // draw background & heatmap similar to draw()
+  octx.fillStyle = '#fff'; octx.fillRect(0,0,oc.width,oc.height);
+  // cells
+  for (const c of cells){
+    const px = pad + c.xIndex*scale;
+    const py = pad + c.yIndex*scale;
+    octx.fillStyle = (c.rssi===null) ? '#f1f3f5' : rssiToColor(c.rssi);
+    octx.fillRect(px+1, py+1, scale-2, scale-2);
+  }
+  // walls
+  for (const w of walls){
+    octx.beginPath(); octx.strokeStyle = '#6c757d'; octx.lineWidth = Math.max(3, w.loss/4);
+    const p0 = w.points[0]; octx.moveTo(toPixelX(p0.x), toPixelY(p0.y));
+    for (let i=1;i<w.points.length;i++){ const p=w.points[i]; octx.lineTo(toPixelX(p.x), toPixelY(p.y)); }
+    octx.stroke();
+  }
+  // APs
+  aps.forEach((a, i)=>{
+    const px = toPixelX(a.xIndex), py = toPixelY(a.yIndex);
+    octx.beginPath(); octx.fillStyle = '#0d6efd'; octx.arc(px,py, Math.max(6, scale*0.2),0,Math.PI*2); octx.fill();
+    octx.strokeStyle = '#fff'; octx.lineWidth = 2; octx.stroke();
+    octx.fillStyle = '#fff'; octx.font = `${Math.max(10, scale*0.18)}px sans-serif`; octx.textAlign='center'; octx.textBaseline='middle'; octx.fillText('AP'+(i+1), px, py);
+  });
+  const url = oc.toDataURL('image/png');
+  const a = document.createElement('a'); a.href = url; a.download = 'wifi-heatmap.png'; a.click();
+}
 
+// auto-place APs: greedy candidates + local refinement
+function autoPlaceAPs(k){
+  if (cells.length === 0) { alert('Generate grid first'); return; }
+  // candidate set: sample cells (we'll use all cells but can be limited)
+  const candidates = cells.slice();
+  const originalAps = aps.slice();
+  // Greedy selection: pick AP that maximizes #cells > -65 not already covered
+  const placed = [];
+  const coveredRSSI = Array(cells.length).fill(-Infinity);
+  for (let n=0;n<k;n++){
+    let bestIdx = -1, bestGain = -Infinity, bestRssiArr = null;
+    for (let ci=0;ci<candidates.length;ci++){
+      const cand = candidates[ci];
+      const testAP = {xIndex:cand.xIndex, yIndex:cand.yIndex, ptx: parseFloat(PtxInput.value)};
+      // compute new best rssi if this AP added
+      let gain = 0;
+      const newRssiArr = [];
+      for (let i=0;i<cells.length;i++){
+        const cell = cells[i];
+        const cur = coveredRSSI[i];
+        const res = rssiFromAPToCell(testAP, cell);
+        const nv = Math.max(cur, res.rssi);
+        newRssiArr.push(nv);
+        if (nv > -65 && cur <= -65) gain += 1;
+        gain += (nv - cur)*0.0001;
+      }
+      if (gain > bestGain){ bestGain = gain; bestIdx = ci; bestRssiArr = newRssiArr; }
+    }
+    if (bestIdx === -1) break;
+    // commit best
+    const chosen = candidates[bestIdx];
+    aps.push({xIndex: chosen.xIndex, yIndex: chosen.yIndex, ptx: parseFloat(PtxInput.value)});
+    // update coveredRSSI
+    for (let i=0;i<cells.length;i++) coveredRSSI[i] = bestRssiArr[i];
+  }
+  // local refinement: try moving each placed AP within radius to improve global strong-count
+  let improved = true, iter=0;
+  while (improved && iter < 6){
+    improved = false; iter++;
+    for (let ai=0; ai<aps.length; ai++){
+      let bestLocal = {score: scoreCoverage(), x: aps[ai].xIndex, y: aps[ai].yIndex};
+      // try neighbors within 2 cells
+      for (let dx=-2; dx<=2; dx++){
+        for (let dy=-2; dy<=2; dy++){
+          const nx = aps[ai].xIndex + dx, ny = aps[ai].yIndex + dy;
+          if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+          const save = {x: aps[ai].xIndex, y: aps[ai].yIndex};
+          aps[ai].xIndex = nx; aps[ai].yIndex = ny;
+          computeRSSI();
+          const sc = scoreCoverage();
+          if (sc > bestLocal.score + 0.0001){ bestLocal = {score: sc, x: nx, y: ny}; }
+          // revert
+          aps[ai].xIndex = save.x; aps[ai].yIndex = save.y;
+        }
+      }
+      if (bestLocal.x !== aps[ai].xIndex || bestLocal.y !== aps[ai].yIndex){
+        aps[ai].xIndex = bestLocal.x; aps[ai].yIndex = bestLocal.y; improved = true; computeRSSI();
+      }
+    }
+  }
+  computeRSSI(); draw();
+}
+
+function scoreCoverage(){
+  // score = weighted sum of strong cells + small bonus for medium
+  let score = 0;
+  for (const c of cells){
+    if (c.rssi === null) continue;
+    if (c.rssi > -65) score += 1;
+    else if (c.rssi > -75) score += 0.4;
+    else score += 0;
+  }
+  return score;
+}
+
+// utility: computeRSSI & draw wrapper
+function computeAndRender(){ computeRSSI(); draw(); }
+
+// update stats
+function updateStats(){
+  let strong=0, medium=0, weak=0;
+  for (const c of cells){
+    if (c.rssi === null) continue;
+    if (c.rssi > -65) strong++;
+    else if (c.rssi > -75) medium++;
+    else weak++;
+  }
+  statTotal.textContent = cells.length;
+  statStrong.textContent = strong;
+  statMedium.textContent = medium;
+  statWeak.textContent = weak;
+  statWalls.textContent = walls.length;
+  statAps.textContent = aps.length;
+
+  const userCountInput = document.getElementById('numUsers');
+  const totalUsers = parseInt(userCountInput.value) || 20;
+  showRecommendedDevices(cells, totalUsers);
+}
+
+function showRecommendedDevices(cells, totalUsers){
+  // Find weakest RSSI
+  const minRSSI = Math.min(...cells.map(c=>c.rssi||-100));
+
+  // Devices database
+  const devices = [
+  // UniFi
+  {brand:"Unifi", model:"U6 Pro", tx:20, maxUsers:100},
+  {brand:"Unifi", model:"U6 LR", tx:20, maxUsers:100},
+  {brand:"Unifi", model:"U6 Lite", tx:20, maxUsers:50},
+  {brand:"Unifi", model:"UAP-AC-PRO", tx:20, maxUsers:100},
+  {brand:"Unifi", model:"UAP-AC-LITE", tx:20, maxUsers:50},
+  {brand:"Unifi", model:"UAP-AC-MESH", tx:20, maxUsers:50},
+  {brand:"Unifi", model:"UAP-AC-OUTDOOR", tx:20, maxUsers:50},
+
+  // MikroTik
+  {brand:"MikroTik", model:"cAP ac", tx:20, maxUsers:100},
+  {brand:"MikroTik", model:"cAP XL ac", tx:20, maxUsers:200},
+  {brand:"MikroTik", model:"wAP ac", tx:20, maxUsers:50},
+  {brand:"MikroTik", model:"wAP LTE6", tx:20, maxUsers:50},
+  {brand:"MikroTik", model:"hAP ac²", tx:20, maxUsers:100},
+  {brand:"MikroTik", model:"hAP ax²", tx:20, maxUsers:100},
+
+  // EnGenius
+  {brand:"EnGenius", model:"ECW230", tx:23, maxUsers:200},
+  {brand:"EnGenius", model:"ECW220", tx:20, maxUsers:100},
+  {brand:"EnGenius", model:"ECW120", tx:20, maxUsers:50},
+  {brand:"EnGenius", model:"ECW110", tx:20, maxUsers:50},
+  {brand:"EnGenius", model:"ECW530", tx:23, maxUsers:300},
+  {brand:"EnGenius", model:"ECW220S", tx:20, maxUsers:100},
+
+  // Ruijie
+  {brand:"Ruijie", model:"RG-AP9861-R", tx:23, maxUsers:500},
+  {brand:"Ruijie", model:"RG-AP9220", tx:23, maxUsers:500},
+  {brand:"Ruijie", model:"RG-AP880-E", tx:20, maxUsers:300},
+  {brand:"Ruijie", model:"RG-AP880-AR", tx:20, maxUsers:300},
+  {brand:"Ruijie", model:"RG-AP850-AR(V3)", tx:20, maxUsers:200},
+  {brand:"Ruijie", model:"RG-AP840-I(V2)", tx:20, maxUsers:200},
+  {brand:"Ruijie", model:"RG-AP820-AR(V3)", tx:20, maxUsers:150},
+  {brand:"Ruijie", model:"RG-AP820-I", tx:20, maxUsers:150},
+  {brand:"Ruijie", model:"RG-AP810-I", tx:20, maxUsers:100},
+
+  // Tenda
+  {brand:"Tenda", model:"AC10", tx:20, maxUsers:50},
+  {brand:"Tenda", model:"AC6", tx:20, maxUsers:50},
+  {brand:"Tenda", model:"MW6", tx:20, maxUsers:50},
+  {brand:"Tenda", model:"MW3", tx:20, maxUsers:50},
+  {brand:"Tenda", model:"MW12", tx:20, maxUsers:100},
+  {brand:"Tenda", model:"MW5", tx:20, maxUsers:50},
+
+  // Totolink
+  {brand:"Totolink", model:"CA3000X-PoE", tx:20, maxUsers:100},
+  {brand:"Totolink", model:"CA1200-PoE", tx:20, maxUsers:50},
+  {brand:"Totolink", model:"CA300-PoE", tx:20, maxUsers:50},
+  {brand:"Totolink", model:"CP900L", tx:20, maxUsers:50},
+  {brand:"Totolink", model:"CP300L", tx:20, maxUsers:50},
+  {brand:"Totolink", model:"CP450", tx:20, maxUsers:50},
+
+  // Speedify
+  {brand:"Speedify", model:"R1", tx:18, maxUsers:15},
+];
+
+
+  // Approximate recommendation with ±10 dBm and ±10 users tolerance
+const recommended = devices.filter(d => {
+    const txOk = d.tx >= parseFloat(PtxInput.value) - 10 && d.tx <= parseFloat(PtxInput.value) + 10; // ±10 dBm
+    const usersOk = totalUsers >= d.maxUsers - 10 && totalUsers <= d.maxUsers + 10;               // ±10 users
+    return txOk && usersOk;
+});
+
+
+  const list = recommended.map(d=>`${d.brand} ${d.model} (TX ${d.tx} dBm, Max Users: ${d.maxUsers})`).join("<br>") || "No suitable devices found";
+
+  let recDiv = document.getElementById('recommendedDevices');
+  if(!recDiv){
+    recDiv = document.createElement('div');
+    recDiv.id = 'recommendedDevices';
+    recDiv.className = 'alert alert-info mt-3';
+    const container = document.querySelector('.results') || document.body;
+    container.appendChild(recDiv);
+  }
+  recDiv.innerHTML = `<strong>Recommended Devices:</strong><br>${list}`;
+}
+
+
+
+
+// --------------------- Animated AI Placement ---------------------
+async function aiPlaceAPsAnimated(k, iterations=500){
+    if (cells.length===0){ alert('Generate grid first'); return; }
+
+    // initialize random AP positions
+    let current = [];
+    for (let i=0;i<k;i++){
+        const x = Math.floor(Math.random()*cols);
+        const y = Math.floor(Math.random()*rows);
+        current.push({xIndex:x, yIndex:y, ptx: parseFloat(PtxInput.value)});
+    }
+
+    let best = current.map(a=>({...a}));
+    let bestScore = scorePlacement(best);
+
+    let T = 5.0; // initial temperature
+    const alpha = 0.995; // cooling rate
+
+    for (let iter=0;iter<iterations;iter++){
+        // pick one AP and move it randomly
+        let next = current.map(a=>({...a}));
+        const ai = Math.floor(Math.random()*k);
+        const dx = Math.floor(Math.random()*5)-2; // -2..2
+        const dy = Math.floor(Math.random()*5)-2;
+        next[ai].xIndex = Math.max(0, Math.min(cols-1, next[ai].xIndex+dx));
+        next[ai].yIndex = Math.max(0, Math.min(rows-1, next[ai].yIndex+dy));
+
+        const nextScore = scorePlacement(next);
+        const delta = nextScore - scorePlacement(current);
+
+        if (delta>0 || Math.random() < Math.exp(delta/T)){
+            current = next.map(a=>({...a})); // accept move
+        }
+
+        if (nextScore>bestScore){
+            best = next.map(a=>({...a}));
+            bestScore = nextScore;
+        }
+
+        T *= alpha;
+
+        // Animate every few iterations
+        if (iter % 5 === 0){
+            aps = current.map(a=>({...a}));
+            computeAndRender();
+            await new Promise(r => setTimeout(r, 10)); // small delay for animation
+        }
+    }
+
+    // Final placement
+    aps = best.map(a=>({...a}));
+    computeAndRender();
+}
+
+// Add animated AI placement button
+// const aiAnimBtn = document.createElement('button');
+// aiAnimBtn.className = 'btn btn-outline-danger mt-2 w-100';
+// aiAnimBtn.textContent = 'AI Placement (Animated)';
+// aiAnimBtn.addEventListener('click', ()=>{
+//     const k = Math.max(1, parseInt(autoCount.value)||1);
+//     aiPlaceAPsAnimated(k, 700); // 700 iterations
+// });
+// document.querySelector('.controls').appendChild(aiAnimBtn);
+
+// score placement: count strong + medium coverage cells
+function scorePlacement(apArr){
+  const tempCells = cells.map(c=>({...c, rssi:null}));
+  for (let i=0;i<apArr.length;i++){
+    const a = apArr[i];
+    for (const c of tempCells){
+      const res = rssiFromAPToCell(a, c);
+      if (c.rssi===null || res.rssi>c.rssi) c.rssi=res.rssi;
+    }
+  }
+  let score=0;
+  for (const c of tempCells){
+    if (c.rssi===null) continue;
+    if (c.rssi > -65) score += 1;
+    else if (c.rssi > -75) score += 0.4;
+  }
+  return score;
+}
+
+// add a new button for AI placement
+// const aiBtn = document.createElement('button');
+// aiBtn.className = 'btn btn-outline-warning mt-2 w-100';
+// aiBtn.textContent = 'AI-Powered Placement';
+// aiBtn.addEventListener('click', ()=> {
+//   const k = Math.max(1, parseInt(autoCount.value)||1);
+//   aiPlaceAPs(k, 700); // 700 iterations by default
+// });
+// document.querySelector('.controls').appendChild(aiBtn);
+// --------------------- End of AI Simulated Annealing ---------------------
+
+// wire UI
+PtxInput.addEventListener('input', ()=>{ PtxVal.textContent = PtxInput.value + ' dBm'; // update ptx of existing APs as global
+  for (const a of aps) a.ptx = parseFloat(PtxInput.value); computeAndRender();});
+freqSel.addEventListener('change', computeAndRender);
+generateBtn.addEventListener('click', ()=>{ generateGrid(); computeAndRender(); });
+clearWallsBtn.addEventListener('click', ()=>{ walls = []; computeAndRender(); });
+clearAllBtn.addEventListener('click', ()=>{ walls=[]; aps=[]; computeAndRender(); });
+fitBtn.addEventListener('click', ()=>{ fitCanvas(); });
+
+autoPlaceBtn.addEventListener('click', ()=>{ const k = Math.max(1, parseInt(autoCount.value)||1); autoPlaceAPs(k); });
+
+// initial grid
+generateGrid();
+computeAndRender();
+// If weakest coverage is -65 dBm and you want at least -75 dBm at cell
+// let minRSSI = Math.min(...cells.map(c => c.rssi || -100));
+// const requiredTx = Math.abs(minRSSI); // e.g., 10 dB margin
+
+
+
+// export PNG
+exportBtn.addEventListener('click', exportPNG);
+
+// small utility to make legend gradient visible (set background)
+legendBar.style.background = 'linear-gradient(90deg,#dc3545,#ffc107,#28a745)';
+
+// helper to convert hex/rgb -> text color (already included above)
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+// End of script
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
