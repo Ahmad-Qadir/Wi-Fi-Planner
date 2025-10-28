@@ -1,531 +1,416 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Wi-Fi LinkPlanner - RSSI Summary</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Wi-Fi LinkPlanner — Floor Grid Simulation</title>
+
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
 <style>
-:root {
-  --primary: #4361ee;
-  --secondary: #3f37c9;
-  --success: #4cc9f0;
-  --warning: #f72585;
-  --dark: #1d3557;
-  --light: #f8f9fa;
-  --gradient: linear-gradient(135deg, #4361ee, #3f37c9);
-}
-
-* {
-  transition: all 0.3s ease;
-}
-
-body {
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  min-height: 100vh;
-  padding: 2rem;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-.container {
-  max-width: 900px;
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-  padding: 2.5rem;
-  margin: 0 auto;
-  animation: fadeIn 0.8s ease-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-h1 {
-  color: var(--dark);
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-  position: relative;
-  display: inline-block;
-}
-
-h1:after {
-  content: '';
-  position: absolute;
-  bottom: -10px;
-  left: 0;
-  width: 80px;
-  height: 4px;
-  background: var(--gradient);
-  border-radius: 2px;
-}
-
-.subtitle {
-  color: #6c757d;
-  font-size: 1.1rem;
-  margin-bottom: 2rem;
-}
-
-.card {
-  border: none;
-  border-radius: 15px;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-  margin-bottom: 1.5rem;
-  overflow: hidden;
-}
-
-.card-header {
-  background: var(--gradient);
-  color: white;
-  font-weight: 600;
-  padding: 1rem 1.5rem;
-  border-bottom: none;
-}
-
-.form-label {
-  font-weight: 600;
-  color: var(--dark);
-  margin-bottom: 0.5rem;
-}
-
-.form-range {
-  height: 8px;
-  border-radius: 10px;
-}
-
-.form-range::-webkit-slider-thumb {
-  background: var(--primary);
-  border: none;
-  height: 22px;
-  width: 22px;
-  border-radius: 50%;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
-}
-
-.form-range::-moz-range-thumb {
-  background: var(--primary);
-  border: none;
-  height: 22px;
-  width: 22px;
-  border-radius: 50%;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
-}
-
-.form-control, .form-select {
-  border-radius: 10px;
-  padding: 0.75rem 1rem;
-  border: 1px solid #e0e0e0;
-  transition: all 0.3s;
-}
-
-.form-control:focus, .form-select:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.25);
-}
-
-.btn {
-  border-radius: 10px;
-  padding: 0.6rem 1.2rem;
-  font-weight: 600;
-  transition: all 0.3s;
-}
-
-.btn-primary {
-  background: var(--gradient);
-  border: none;
-}
-
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 7px 14px rgba(67, 97, 238, 0.3);
-}
-
-.btn-outline-primary {
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-.btn-outline-primary:hover {
-  background-color: var(--primary);
-  border-color: var(--primary);
-  transform: translateY(-2px);
-}
-
-.btn-danger {
-  background-color: #ff4d6d;
-  border-color: #ff4d6d;
-}
-
-.btn-danger:hover {
-  background-color: #c9184a;
-  border-color: #c9184a;
-  transform: translateY(-2px);
-}
-
-.wall-item {
-  background: #f8f9fa;
-  border-radius: 10px;
-  padding: 1rem;
-  margin-bottom: 0.75rem;
-  border-left: 4px solid var(--primary);
-  animation: slideIn 0.4s ease-out;
-}
-
-@keyframes slideIn {
-  from { opacity: 0; transform: translateX(-20px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-.results-card {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  border-radius: 15px;
-  padding: 1.5rem;
-  margin-top: 1.5rem;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% { box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05); }
-  50% { box-shadow: 0 5px 20px rgba(67, 97, 238, 0.15); }
-  100% { box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05); }
-}
-
-.rssi-value {
-  font-size: 2.5rem;
-  font-weight: 800;
-  margin: 0.5rem 0;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.legend {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1.5rem;
-  margin-top: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.legend-dot {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-}
-
-.legend-dot.good {
-  background-color: #2ecc71;
-  box-shadow: 0 0 8px rgba(46, 204, 113, 0.5);
-}
-
-.legend-dot.medium {
-  background-color: #f39c12;
-  box-shadow: 0 0 8px rgba(243, 156, 18, 0.5);
-}
-
-.legend-dot.weak {
-  background-color: #e74c3c;
-  box-shadow: 0 0 8px rgba(231, 76, 60, 0.5);
-}
-
-.signal-meter {
-  width: 100%;
-  height: 20px;
-  background: #e0e0e0;
-  border-radius: 10px;
-  margin: 1.5rem 0;
-  overflow: hidden;
-  position: relative;
-}
-
-.signal-level {
-  height: 100%;
-  border-radius: 10px;
-  transition: width 1s cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-
-.signal-labels {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 0.5rem;
-  font-size: 0.85rem;
-  color: #6c757d;
-}
-
-.wifi-icon {
-  font-size: 2rem;
-  margin-right: 1rem;
-  color: var(--primary);
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-top: 1.5rem;
-}
-
-.stat-card {
-  background: white;
-  border-radius: 10px;
-  padding: 1rem;
-  text-align: center;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
-}
-
-.stat-value {
-  font-size: 1.8rem;
-  font-weight: 700;
-  margin: 0.5rem 0;
-}
-
-.stat-label {
-  color: #6c757d;
-  font-size: 0.9rem;
-}
-
-@media (max-width: 768px) {
-  body {
-    padding: 1rem;
-  }
-  
-  .container {
-    padding: 1.5rem;
-  }
-  
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-}
+  body { padding: 1.5rem; background:#f8f9fa; }
+  .controls { background: white; padding: 1rem; border-radius: .5rem; box-shadow: 0 0 10px rgba(0,0,0,0.04); }
+  .grid-wrap { overflow:auto; background: white; padding: 1rem; border-radius: .5rem; box-shadow: 0 0 10px rgba(0,0,0,0.04); }
+  .grid { display: inline-block; border: 1px solid #ddd; }
+  .cell { width: 28px; height: 28px; display:inline-flex; justify-content:center; align-items:center; margin:1px; font-size:10px; color:#fff; border-radius:4px; cursor: pointer; user-select:none; }
+  .cell.wall { background:#6c757d; color:white; font-weight:600; }
+  .cell.ap { outline: 2px solid #000; background: #e0f7fa; color: #000; font-weight:700; }
+  .rssi-tooltip { font-size:11px; }
+  .legend-dot { display:inline-block; width:14px; height:14px; vertical-align:middle; margin-right:6px; border-radius:3px; }
+  .summary { margin-top:.5rem; }
+  /* colors for RSSI */
+  .strong { background: #28a745; }
+  .medium { background: #ffc107; color:#000; }
+  .weak { background: #dc3545; }
+  .no-signal { background: #6c757d; }
+  .controls .small { font-size:.85rem; color:#6c757d; }
 </style>
 </head>
 <body>
 <div class="container">
-  <div class="d-flex align-items-center mb-4">
-    <i class="fas fa-wifi wifi-icon"></i>
-    <div>
-      <h1>Wi-Fi LinkPlanner</h1>
-      <p class="subtitle">Dynamic calculation of RSSI with wall/floor attenuation analysis</p>
-    </div>
-  </div>
+  <div class="row g-3">
+    <div class="col-lg-4">
+      <div class="controls">
+        <h4>Wi-Fi LinkPlanner</h4>
+        <p class="small">Draw room size, place AP (click a cell), place walls (click cell to toggle), and inspect RSSI per cell.</p>
 
-  <div class="card">
-    <div class="card-header">
-      <i class="fas fa-sliders-h me-2"></i>Configuration Parameters
-    </div>
-    <div class="card-body">
-      <form id="rssiForm">
-        <div class="mb-4">
-          <label class="form-label">AP Transmit Power</label>
-          <input type="range" class="form-range" min="5" max="30" value="20" id="PtxRange">
-          <div class="d-flex justify-content-between mt-1">
-            <small>5 dBm</small>
-            <span id="PtxValue" class="fw-bold">20 dBm</span>
-            <small>30 dBm</small>
+        <div class="mb-2">
+          <label class="form-label">Room width (m)</label>
+          <input id="roomWidth" type="number" class="form-control" value="10" min="3" step="1">
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Room height (m)</label>
+          <input id="roomHeight" type="number" class="form-control" value="8" min="3" step="1">
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Cell size (m) — cell represents 1 cell² meters</label>
+          <select id="cellSize" class="form-select">
+            <option value="1" selected>1 m</option>
+            <option value="0.5">0.5 m</option>
+            <option value="0.25">0.25 m</option>
+          </select>
+        </div>
+
+        <hr>
+
+        <div class="mb-2">
+          <label class="form-label">AP Transmit Power (dBm)</label>
+          <input id="Ptx" type="range" min="5" max="30" value="20" class="form-range">
+          <div class="d-flex justify-content-between">
+            <small id="PtxVal">20 dBm</small>
+            <small class="small">Change to see realtime update</small>
           </div>
         </div>
 
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Frequency</label>
-            <select class="form-select" id="freqSelect">
-              <option value="2400" selected>2.4 GHz</option>
-              <option value="5000">5 GHz</option>
-            </select>
+        <div class="mb-2">
+          <label class="form-label">Frequency</label>
+          <select id="freq" class="form-select">
+            <option value="2400" selected>2.4 GHz</option>
+            <option value="5000">5 GHz</option>
+          </select>
+        </div>
+
+        <hr>
+
+        <div class="mb-2">
+          <label class="form-label">Wall type to place</label>
+          <select id="wallType" class="form-select">
+            <option value="15" selected>Concrete — 15 dB</option>
+            <option value="7">Glass — 7 dB</option>
+            <option value="5">Plastic — 5 dB</option>
+          </select>
+        </div>
+
+        <div class="d-grid gap-2">
+          <button id="generateBtn" class="btn btn-primary">Generate Grid</button>
+          <button id="clearWallsBtn" class="btn btn-outline-secondary">Clear Walls</button>
+          <button id="resetBtn" class="btn btn-outline-danger">Reset AP & Walls</button>
+        </div>
+
+        <hr>
+
+        <div class="summary">
+          <div><strong>Mode:</strong> <span id="modeLabel">Place AP / Toggle wall</span></div>
+          <div class="mt-2"><strong>Summary</strong></div>
+          <div class="mt-1">
+            <span class="legend-dot strong"></span> <small>Strong (&gt; -65 dBm)</small><br>
+            <span class="legend-dot medium" style="background:#ffc107"></span> <small>Medium (-75 to -65 dBm)</small><br>
+            <span class="legend-dot weak"></span> <small>Weak (&le; -75 dBm)</small><br>
+            <span class="legend-dot no-signal" style="background:#6c757d"></span> <small>Wall cell / No signal</small>
           </div>
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Distance to Client (meters)</label>
-            <input type="number" class="form-control" id="distance" value="2" step="0.1" min="0.1" required>
+
+          <div class="mt-3">
+            <p class="mb-1 small">Total cells: <span id="totalCells">0</span></p>
+            <p class="mb-1 small">Strong cells: <span id="countStrong">0</span></p>
+            <p class="mb-1 small">Medium cells: <span id="countMedium">0</span></p>
+            <p class="mb-1 small">Weak cells: <span id="countWeak">0</span></p>
+            <p class="mb-1 small">Walls placed: <span id="wallCount">0</span></p>
           </div>
         </div>
 
-        <div class="mb-3">
-          <label class="form-label">Walls / Floors</label>
-          <div id="wallsContainer"></div>
-          <button type="button" class="btn btn-outline-primary mt-2" id="addWallBtn">
-            <i class="fas fa-plus me-1"></i>Add Wall/Floor
-          </button>
+        <hr>
+        <div class="small text-muted">Instructions: Click "Generate Grid", click any cell to place the AP (only one AP allowed). Click other cells to toggle walls. AP cell cannot be wall. Change sliders / settings to update RSSI in real time.</div>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div class="grid-wrap">
+        <div id="gridContainer" class="d-flex justify-content-center align-items-center" style="min-height: 400px;">
+          <!-- grid generated here -->
         </div>
-      </form>
-    </div>
-  </div>
-
-  <div class="results-card">
-    <h3 class="text-center mb-4">Signal Strength Analysis</h3>
-    
-    <div class="signal-meter">
-      <div id="signalLevel" class="signal-level"></div>
-    </div>
-    <div class="signal-labels">
-      <span>Poor</span>
-      <span>Fair</span>
-      <span>Good</span>
-      <span>Excellent</span>
-    </div>
-    
-    <div class="text-center mb-4">
-      <div class="rssi-value" id="rssiValue">-40.00 dBm</div>
-      <p class="text-muted">Received Signal Strength Indicator (RSSI)</p>
-    </div>
-    
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-label">Total Walls/Floors</div>
-        <div class="stat-value" id="wallCount">0</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-label">Total Attenuation</div>
-        <div class="stat-value" id="totalLoss">0 dB</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Free Space Path Loss</div>
-        <div class="stat-value" id="pathLoss">0 dB</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="legend">
-    <div class="legend-item">
-      <div class="legend-dot good"></div>
-      <span>Good (> -65 dBm)</span>
-    </div>
-    <div class="legend-item">
-      <div class="legend-dot medium"></div>
-      <span>Medium (-75 to -65 dBm)</span>
-    </div>
-    <div class="legend-item">
-      <div class="legend-dot weak"></div>
-      <span>Weak (<= -75 dBm)</span>
     </div>
   </div>
 </div>
 
 <script>
-const PtxRange = document.getElementById('PtxRange');
-const PtxValue = document.getElementById('PtxValue');
-const freqSelect = document.getElementById('freqSelect');
-const distanceInput = document.getElementById('distance');
-const wallsContainer = document.getElementById('wallsContainer');
-const addWallBtn = document.getElementById('addWallBtn');
-const rssiValue = document.getElementById('rssiValue');
-const wallCount = document.getElementById('wallCount');
-const totalLoss = document.getElementById('totalLoss');
-const pathLoss = document.getElementById('pathLoss');
-const signalLevel = document.getElementById('signalLevel');
+/*
+  Client-side simulation script
+  - grid is width x height measured in meters, cellSize meters per cell (square)
+  - cells are arranged with (cols = Math.ceil(width / cellSize), rows = Math.ceil(height / cellSize))
+  - place AP by clicking a cell (single AP)
+  - toggle walls by clicking non-AP cells
+  - walls are stored as per-cell wallLoss (0=oent)
+  - when computing RSSI for a target cell, we step along the line from AP cell to target cell and sum wall losses of any crossed cells (Bresenham-like)
+  - FSPL uses distance (meters -> km) and frequency (MHz)
+*/
 
-function calculateRSSI(Ptx, freq, distance, totalWallLoss) {
-    const d_km = distance / 1000;
-    const fspl = 20*Math.log10(d_km) + 20*Math.log10(freq) + 32.44;
-    return {
-        rssi: Ptx - fspl - totalWallLoss,
-        fspl: fspl
-    };
-}
+const generateBtn = document.getElementById('generateBtn');
+const clearWallsBtn = document.getElementById('clearWallsBtn');
+const resetBtn = document.getElementById('resetBtn');
+const PtxInput = document.getElementById('Ptx');
+const PtxVal = document.getElementById('PtxVal');
+const freqSelect = document.getElementById('freq');
+const wallTypeSelect = document.getElementById('wallType');
+const gridContainer = document.getElementById('gridContainer');
+const roomWidthInput = document.getElementById('roomWidth');
+const roomHeightInput = document.getElementById('roomHeight');
+const cellSizeSelect = document.getElementById('cellSize');
 
-function addWallInput(value = 15) {
-    const wallTypes = [
-        { value: 15, label: 'Concrete (15 dB)' },
-        { value: 5, label: 'Plastic (5 dB)' },
-        { value: 7, label: 'Glass (7 dB)' },
-        { value: 10, label: 'Brick (10 dB)' },
-        { value: 20, label: 'Metal (20 dB)' },
-        { value: 12, label: 'Wood (12 dB)' }
-    ];
-    
-    const div = document.createElement('div');
-    div.className = 'wall-item';
-    div.innerHTML = `
-      <div class="d-flex gap-2 align-items-center">
-        <select class="form-select wall-type">
-          ${wallTypes.map(type => 
-            `<option value="${type.value}" ${value == type.value ? 'selected' : ''}>${type.label}</option>`
-          ).join('')}
-        </select>
-        <button type="button" class="btn btn-danger btn-sm removeWallBtn">
-          <i class="fas fa-trash"></i>
-        </button>
-      </div>
-    `;
-    wallsContainer.appendChild(div);
+const totalCellsEl = document.getElementById('totalCells');
+const countStrongEl = document.getElementById('countStrong');
+const countMediumEl = document.getElementById('countMedium');
+const countWeakEl = document.getElementById('countWeak');
+const wallCountEl = document.getElementById('wallCount');
 
-    div.querySelector('.removeWallBtn').addEventListener('click', () => {
-        div.style.animation = 'slideIn 0.3s reverse';
-        setTimeout(() => {
-            wallsContainer.removeChild(div);
-            updateRSSI();
-        }, 300);
-    });
+let grid = []; // 2D array of cell objects
+let cols = 0, rows = 0;
+let ap = null; // {x, y}
+let cellSize = parseFloat(cellSizeSelect.value);
 
-    div.querySelector('.wall-type').addEventListener('change', updateRSSI);
-}
+PtxVal.textContent = PtxInput.value + ' dBm';
 
-addWallInput(); // initial wall
-addWallBtn.addEventListener('click', () => addWallInput());
-
-PtxValue.textContent = PtxRange.value + " dBm";
-PtxRange.addEventListener('input', ()=> {
-    PtxValue.textContent = PtxRange.value + " dBm";
-    updateRSSI();
+PtxInput.addEventListener('input', () => {
+  PtxVal.textContent = PtxInput.value + ' dBm';
+  renderGrid(); // realtime update
 });
-freqSelect.addEventListener('change', updateRSSI);
-distanceInput.addEventListener('input', updateRSSI);
+freqSelect.addEventListener('change', renderGrid);
+wallTypeSelect.addEventListener('change', () => {});
+roomWidthInput.addEventListener('change', ()=>{});
+roomHeightInput.addEventListener('change', ()=>{});
+cellSizeSelect.addEventListener('change', ()=>{
+  cellSize = parseFloat(cellSizeSelect.value);
+});
 
-function updateRSSI(){
-    const Ptx = parseFloat(PtxRange.value);
-    const freq = parseFloat(freqSelect.value);
-    const distance = parseFloat(distanceInput.value);
+generateBtn.addEventListener('click', () => {
+  createGrid();
+  renderGrid();
+});
 
-    const wallTypes = Array.from(document.querySelectorAll('.wall-type')).map(sel => parseFloat(sel.value));
-    const totalWallLoss = wallTypes.reduce((a,b) => a+b, 0);
-
-    const result = calculateRSSI(Ptx, freq, distance, totalWallLoss);
-    const rssi = result.rssi;
-
-    let color = '';
-    let signalClass = '';
-    let signalPercentage = 0;
-    
-    if(rssi > -50) {
-        color = '#2ecc71';
-        signalClass = 'good';
-        signalPercentage = 100;
-    } else if(rssi > -65) {
-        color = '#2ecc71';
-        signalClass = 'good';
-        signalPercentage = 80;
-    } else if(rssi > -75) {
-        color = '#f39c12';
-        signalClass = 'medium';
-        signalPercentage = 50;
-    } else {
-        color = '#e74c3c';
-        signalClass = 'weak';
-        signalPercentage = 20;
+clearWallsBtn.addEventListener('click', () => {
+  for (let r=0;r<rows;r++){
+    for (let c=0;c<cols;c++){
+      grid[r][c].wallLoss = 0;
     }
+  }
+  ap = null;
+  updateSummary();
+  renderGrid();
+});
 
-    // Update signal meter
-    signalLevel.style.width = `${signalPercentage}%`;
-    signalLevel.style.background = `linear-gradient(90deg, ${color} 0%, ${color}80 100%)`;
-    
-    // Update RSSI value with animation
-    rssiValue.style.color = color;
-    rssiValue.textContent = `${rssi.toFixed(2)} dBm`;
-    
-    // Update stats
-    wallCount.textContent = wallTypes.length;
-    totalLoss.textContent = `${totalWallLoss} dB`;
-    pathLoss.textContent = `${result.fspl.toFixed(2)} dB`;
+resetBtn.addEventListener('click', () => {
+  ap = null;
+  for (let r=0;r<rows;r++){
+    for (let c=0;c<cols;c++){
+      grid[r][c].wallLoss = 0;
+    }
+  }
+  renderGrid();
+});
+
+function createGrid(){
+  const width = Math.max(1, parseFloat(roomWidthInput.value));
+  const height = Math.max(1, parseFloat(roomHeightInput.value));
+  cellSize = parseFloat(cellSizeSelect.value);
+
+  cols = Math.max(3, Math.ceil(width / cellSize));
+  rows = Math.max(3, Math.ceil(height / cellSize));
+
+  grid = [];
+  for (let r=0;r<rows;r++){
+    const row = [];
+    for (let c=0;c<cols;c++){
+      row.push({
+        x: c,
+        y: r,
+        wallLoss: 0,   // 0 if no wall, otherwise dB
+        el: null       // DOM element
+      });
+    }
+    grid.push(row);
+  }
+
+  // reset AP
+  ap = null;
+
+  // build DOM
+  buildGridDOM();
+  updateSummary();
 }
 
-// Initial calculation
-updateRSSI();
+function buildGridDOM(){
+  gridContainer.innerHTML = '';
+  const gridEl = document.createElement('div');
+  gridEl.className = 'grid';
+  gridEl.style.padding = '8px';
+  gridEl.style.background = '#fff';
+  gridEl.style.display = 'inline-block';
+
+  for (let r=0;r<rows;r++){
+    const rowWrap = document.createElement('div');
+    for (let c=0;c<cols;c++){
+      const cell = document.createElement('div');
+      cell.className = 'cell noselect';
+      cell.style.width = (28) + 'px';
+      cell.style.height = (28) + 'px';
+      cell.dataset.x = c;
+      cell.dataset.y = r;
+      cell.title = `Cell ${c},${r}`;
+
+      // click handler: if AP not set, set AP; else toggle wall (unless clicking AP)
+      cell.addEventListener('click', (ev)=>{
+        const cx = parseInt(cell.dataset.x);
+        const cy = parseInt(cell.dataset.y);
+        const clicked = grid[cy][cx];
+
+        if (!ap){
+          // set AP
+          ap = { x: cx, y: cy };
+          cell.classList.add('ap');
+          cell.textContent = 'AP';
+        } else {
+          // if clicking AP again -> remove AP
+          if (ap.x === cx && ap.y === cy) {
+            ap = null;
+          } else {
+            // toggle wall at clicked cell (AP cell cannot be wall)
+            if (!(ap.x === cx && ap.y === cy)){
+              const loss = parseFloat(wallTypeSelect.value);
+              if (clicked.wallLoss === 0){
+                clicked.wallLoss = loss;
+                cell.classList.add('wall');
+                cell.textContent = 'W';
+              } else {
+                clicked.wallLoss = 0;
+                cell.classList.remove('wall');
+                cell.textContent = '';
+              }
+            }
+          }
+        }
+        renderGrid();
+      });
+
+      rowWrap.appendChild(cell);
+      grid[r][c].el = cell;
+    }
+    gridEl.appendChild(rowWrap);
+  }
+  gridContainer.appendChild(gridEl);
+}
+
+// Bresenham line algorithm to step through cells between two points
+function bresenham(x0, y0, x1, y1){
+  const points = [];
+  let dx = Math.abs(x1 - x0);
+  let dy = Math.abs(y1 - y0);
+  let sx = (x0 < x1) ? 1 : -1;
+  let sy = (y0 < y1) ? 1 : -1;
+  let err = dx - dy;
+
+  while(true){
+    points.push({x: x0, y: y0});
+    if (x0 === x1 && y0 === y1) break;
+    let e2 = err * 2;
+    if (e2 > -dy) { err -= dy; x0 += sx; }
+    if (e2 < dx)  { err += dx; y0 += sy; }
+  }
+  return points;
+}
+
+function calculateCellRSSI(cellX, cellY){
+  if (!ap) return null;
+
+  // distance in meters between centers
+  const dx = (cellX - ap.x) * cellSize;
+  const dy = (cellY - ap.y) * cellSize;
+  let distance = Math.sqrt(dx*dx + dy*dy);
+
+  // if same cell, use a minimum distance to avoid infinite FSPL
+  if (distance < 0.5) distance = 0.5;
+
+  // count walls crossed along path
+  const path = bresenham(ap.x, ap.y, cellX, cellY);
+
+  // exclude ap cell (path[0]) and target cell? include walls encountered excluding AP cell
+  let totalWallLoss = 0;
+  for (let p of path){
+    // skip the AP cell itself
+    if (p.x === ap.x && p.y === ap.y) continue;
+    // if we reach target cell, include its wallLoss (so a wall on the target cell blocks)
+    if (grid[p.y] && grid[p.y][p.x]){
+      totalWallLoss += grid[p.y][p.x].wallLoss;
+    }
+  }
+
+  // FSPL
+  const Ptx = parseFloat(PtxInput.value);
+  const freq = parseFloat(freqSelect.value); // MHz
+  const d_km = distance / 1000;
+  const fspl = 20 * Math.log10(d_km) + 20 * Math.log10(freq) + 32.44;
+
+  const rssi = Ptx - fspl - totalWallLoss;
+  return { rssi, distance, totalWallLoss, fspl };
+}
+
+function renderGrid(){
+  if (!grid || grid.length === 0) return;
+
+  let strong=0, medium=0, weak=0, walls=0;
+  for (let r=0;r<rows;r++){
+    for (let c=0;c<cols;c++){
+      const cellObj = grid[r][c];
+      const el = cellObj.el;
+      el.classList.remove('strong','medium','weak','no-signal','ap','wall');
+      el.textContent = '';
+
+      if (ap && ap.x === c && ap.y === r) {
+        el.classList.add('ap');
+        el.textContent = 'AP';
+        continue;
+      }
+
+      if (cellObj.wallLoss && cellObj.wallLoss > 0){
+        el.classList.add('wall');
+        el.textContent = 'W';
+        walls++;
+        // treat wall cell as no-signal visually, but still include in counts? We show as no-signal
+        el.classList.add('no-signal');
+        el.title = `Wall: ${cellObj.wallLoss} dB`;
+        continue;
+      }
+
+      const data = calculateCellRSSI(c, r);
+      if (!data){
+        el.classList.add('no-signal');
+        el.title = `No AP placed`;
+        continue;
+      }
+
+      const rssi = data.rssi;
+      const tooltip = `RSSI: ${rssi.toFixed(2)} dBm\nDist: ${data.distance.toFixed(2)} m\nWallLoss: ${data.totalWallLoss} dB\nFSPL: ${data.fspl.toFixed(2)} dB`;
+      el.title = tooltip;
+
+      if (rssi > -65){
+        el.classList.add('strong');
+        strong++;
+      } else if (rssi > -75){
+        el.classList.add('medium');
+        medium++;
+      } else {
+        el.classList.add('weak');
+        weak++;
+      }
+
+      // show small value inside cell (rounded)
+      el.textContent = Math.round(rssi);
+    }
+  }
+
+  totalCellsEl.textContent = (rows*cols);
+  countStrongEl.textContent = strong;
+  countMediumEl.textContent = medium;
+  countWeakEl.textContent = weak;
+  wallCountEl.textContent = walls;
+}
+
+// initial grid generation
+createGrid();
+renderGrid();
+
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
