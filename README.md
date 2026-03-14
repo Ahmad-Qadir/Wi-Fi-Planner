@@ -1,4 +1,4 @@
-# Wi-Fi Planner - Numeric RSSI Calculator
+# Wi-Fi Planner - Floor Simulaition Multi-Vendor RSSI Calculator
 
 [![HTML5](https://img.shields.io/badge/HTML5-%23E34F26.svg?&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML)
 [![Bootstrap](https://img.shields.io/badge/Bootstrap-5.3.3-purple?logo=bootstrap&logoColor=white)](https://getbootstrap.com/)
@@ -28,14 +28,38 @@ A **real-time Wi-Fi RSSI calculator** for network planning, allowing dynamic cal
 ---
 
 ## 🔹 Screenshots
+<img width="2256" height="2260" alt="image" src="https://github.com/user-attachments/assets/ee5a4f96-6a9e-4cae-bc66-d3516aaf4d3d" />
 
-<img width="1920" height="918" alt="image" src="https://github.com/user-attachments/assets/fd410c82-c994-4e62-b75a-65fdb13207a4" />
+---
+
+## 🔹 Algorithms
+| Concept               | Name                                               |
+| --------------------- | -------------------------------------------------- |
+| Distance-loss formula | **Log-Distance Path Loss (LDPL) – simplified**     |
+| RSSI estimation       | **Free-Space Path Loss approximation**             |
+| Multi-AP selection    | **Strongest Signal (Max RSSI)**                    |
+| Device suggestion     | **Heuristic matching (TX & Capacity ± tolerance)** |
+
+## What Makes This Better vs Others?
+
+| Feature                          | This Planner                                           | UniFi Planner          | Other Heatmaps (Ekahau / Tamo / NetSpot) |
+| -------------------------------- | ------------------------------------------------------ | ---------------------- | ---------------------------------------- |
+| Offline / no login               | ✅                                                     | ❌ cloud login needed   | ❌ usually license required               |
+| Brand support                    | ✅ Multi-brand                                          | ❌ UniFi only           | ✅ multi                                  |
+| Add your real AP models          | ✅ easy JSON                                            | ❌ closed               | ❌ locked DB                              |
+| Works in browser                 | ✅                                                      | ✅                      | ❌ desktop apps                           |
+| Custom wall drawing              | ✅ basic now                                            | ✅                      | ✅                                        |
+| Custom RSSI logic                | ✅ editable                                             | ❌ closed               | ❌ closed                                 |
+| Cost                             | **FREE**                                               | Free but vendor-locked | $$$$ Very expensive                      |
+| Auto AP recommendation           | ✅                                                      | ❌                      | ❌                                        |
+| Local Iraqi/ISP AP models        | 🟢 we can add Mikrotik, Ruijie, EnGenius, Mercury, etc | ❌                      | ❌                                        |
+| Add your rules (users, TX, RSSI) | ✅                                                      | ❌                      | ❌                                        |
 
 ---
 
 ## 🔹 Installation
 
-1. Clone the repository:
+open https://ahmad-qadir.github.io/Wi-Fi-Planner/
 
 ```bash
 git clone https://github.com/Ahmad-Qadir/Wi-Fi-Planner.git
