@@ -63,3 +63,7 @@ open https://ahmad-qadir.github.io/Wi-Fi-Planner/
 
 ```bash
 git clone https://github.com/Ahmad-Qadir/Wi-Fi-Planner.git
+
+## Reference
+
+- Author website: [ahmad-qadir.dev](https://ahmad-qadir.dev/)
