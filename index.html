@@ -296,6 +296,50 @@
   .footer-note{ font-size:.83rem; color: var(--muted); margin-top:8px; }
 
   .results { color: var(--muted); }
+  .rec-summary {
+    margin-bottom: 14px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(10, 16, 28, 0.42);
+  }
+  .recommendation-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .recommendation-card {
+    flex: 1 1 230px;
+    min-width: 220px;
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  }
+  .recommendation-card h6 {
+    margin: 0 0 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .recommendation-card p {
+    margin: 0 0 10px;
+    color: var(--muted);
+    font-size: 0.82rem;
+  }
+  .recommendation-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .rec-badge {
+    padding: 5px 9px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    background: rgba(93, 224, 230, 0.1);
+    border: 1px solid rgba(93, 224, 230, 0.22);
+    color: var(--ink);
+  }
   .form-label { color: var(--muted); font-weight: 500; letter-spacing: 0.02em; }
   h5 { font-weight: 600; letter-spacing: 0.01em; }
 
@@ -533,6 +577,7 @@ const ctx = simCanvas.getContext('2d');
 const roomW = document.getElementById('roomW');
 const roomH = document.getElementById('roomH');
 const cellSizeSel = document.getElementById('cellSize');
+const numUsersInput = document.getElementById('numUsers');
 const PtxInput = document.getElementById('Ptx');
 const PtxVal = document.getElementById('PtxVal');
 const freqSel = document.getElementById('freq');
@@ -1327,8 +1372,7 @@ function updateStats(){
   updateLiveMeta();
   updateSelectedAPInspector();
 
-  const userCountInput = document.getElementById('numUsers');
-  const totalUsers = parseInt(userCountInput.value) || 20;
+  const totalUsers = parseInt(numUsersInput.value) || 20;
   showRecommendedDevices(cells, totalUsers);
 }
 
@@ -1447,8 +1491,13 @@ function drawSparkline(values){
 }
 
 function showRecommendedDevices(cells, totalUsers){
-  // Find weakest RSSI
-  const minRSSI = Math.min(...cells.map(c=>c.rssi||-100));
+  const measuredCells = cells.filter(c => c.rssi !== null);
+  const minRSSI = measuredCells.length ? Math.min(...measuredCells.map(c => c.rssi)) : -100;
+  const currentApCount = Math.max(aps.length, parseInt(autoCount.value) || 1, 1);
+  const desiredTx = parseFloat(PtxInput.value) + (minRSSI <= -75 ? 2 : 0);
+  const estimatedByUsers = Math.max(1, Math.ceil(totalUsers / 120));
+  const estimatedByCoverage = minRSSI <= -80 ? Math.max(2, currentApCount) : currentApCount;
+  const recommendedApCount = Math.max(currentApCount, estimatedByUsers, estimatedByCoverage);
 
   // Devices database
   const devices = [
@@ -1539,26 +1588,57 @@ function showRecommendedDevices(cells, totalUsers){
   {brand:"Speedify", model:"R1", tx:18, maxUsers:15},
 ];
 
-
-  // Approximate recommendation with ±10 dBm and ±10 users tolerance
-const recommended = devices.filter(d => {
-    const txOk = d.tx >= parseFloat(PtxInput.value) - 10 && d.tx <= parseFloat(PtxInput.value) + 10; // ±10 dBm
-    const usersOk = totalUsers >= d.maxUsers - 10 && totalUsers <= d.maxUsers + 10;               // ±10 users
-    return txOk && usersOk;
-});
-
-
-  const list = recommended.map(d=>`${d.brand} ${d.model} (TX ${d.tx} dBm, Max Users: ${d.maxUsers})`).join("<br>") || "No suitable devices found";
+  const recommended = devices
+    .map(device => {
+      const unitsForUsers = Math.max(1, Math.ceil(totalUsers / device.maxUsers));
+      const units = Math.max(recommendedApCount, unitsForUsers);
+      const usersPerAp = Math.ceil(totalUsers / units);
+      const txGap = Math.abs(device.tx - desiredTx);
+      const capacityHeadroom = device.maxUsers - usersPerAp;
+      const score = (40 - txGap * 4) + Math.min(30, capacityHeadroom / 8) + Math.min(25, device.maxUsers / 20) - units * 1.5;
+      return {
+        ...device,
+        units,
+        usersPerAp,
+        txGap,
+        capacityHeadroom,
+        score
+      };
+    })
+    .filter(device => device.capacityHeadroom >= -10 && device.tx >= desiredTx - 6)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8);
 
   let recDiv = document.getElementById('recommendedDevices');
   if(!recDiv){
     recDiv = document.createElement('div');
     recDiv.id = 'recommendedDevices';
-    recDiv.className = 'alert alert-info mt-3';
+    recDiv.className = 'mt-3';
     const container = document.querySelector('.results') || document.body;
     container.appendChild(recDiv);
   }
-  recDiv.innerHTML = `<strong>Recommended Devices:</strong><br>${list}`;
+
+  const summary = `
+    <div class="rec-summary">
+      <strong>Deployment suggestion</strong><br>
+      <span class="small-muted">Target ${recommendedApCount} APs • ${totalUsers} users • weakest measured cell ${Math.round(minRSSI)} dBm • target TX ${desiredTx.toFixed(0)} dBm</span>
+    </div>`;
+
+  const cards = recommended.length
+    ? `<div class="recommendation-grid">${recommended.map(device => `
+      <div class="recommendation-card">
+        <h6>${device.brand} ${device.model}</h6>
+        <p>Balanced for multi-AP planning with stronger live coverage flexibility.</p>
+        <div class="recommendation-badges">
+          <span class="rec-badge">${device.units} APs</span>
+          <span class="rec-badge">${device.usersPerAp} users/AP</span>
+          <span class="rec-badge">TX ${device.tx} dBm</span>
+          <span class="rec-badge">Cap ${device.maxUsers}</span>
+        </div>
+      </div>`).join('')}</div>`
+    : `<div class="rec-summary">No suitable devices found for the current AP count, power target, and user density.</div>`;
+
+  recDiv.innerHTML = summary + cards;
 }
 
 
@@ -1662,6 +1742,8 @@ function scorePlacement(apArr){
 PtxInput.addEventListener('input', ()=>{ PtxVal.textContent = PtxInput.value + ' dBm'; // update ptx of existing APs as global
   for (const a of aps) a.ptx = parseFloat(PtxInput.value); computeAndRender();});
 freqSel.addEventListener('change', computeAndRender);
+numUsersInput.addEventListener('input', ()=> showRecommendedDevices(cells, parseInt(numUsersInput.value) || 20));
+autoCount.addEventListener('input', ()=> showRecommendedDevices(cells, parseInt(numUsersInput.value) || 20));
 generateBtn.addEventListener('click', ()=>{ generateGrid(); computeAndRender(); });
 clearWallsBtn.addEventListener('click', ()=>{ walls = []; computeAndRender(); });
 clearAllBtn.addEventListener('click', ()=>{ walls=[]; aps=[]; computeAndRender(); });
