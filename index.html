@@ -296,6 +296,16 @@
   .footer-note{ font-size:.83rem; color: var(--muted); margin-top:8px; }
 
   .results { color: var(--muted); }
+  .recommendation-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .recommendation-toolbar .form-select {
+    min-width: 180px;
+    max-width: 240px;
+  }
   .rec-summary {
     margin-bottom: 14px;
     padding: 12px 14px;
@@ -339,6 +349,10 @@
     background: rgba(93, 224, 230, 0.1);
     border: 1px solid rgba(93, 224, 230, 0.22);
     color: var(--ink);
+  }
+  .rec-badge-best {
+    background: rgba(112, 241, 168, 0.16);
+    border-color: rgba(112, 241, 168, 0.34);
   }
   .form-label { color: var(--muted); font-weight: 500; letter-spacing: 0.02em; }
   h5 { font-weight: 600; letter-spacing: 0.01em; }
@@ -555,6 +569,17 @@
 
       <div class="panel glass-card">
         <div class="panel-title">Results</div>
+        <div class="recommendation-toolbar mt-2">
+          <select id="recVendor" class="form-select form-select-sm" aria-label="Filter recommendations by vendor">
+            <option value="all">All vendors</option>
+          </select>
+          <select id="recSort" class="form-select form-select-sm" aria-label="Sort recommendations">
+            <option value="score">Sort: Best Match</option>
+            <option value="capacity">Sort: Capacity</option>
+            <option value="tx">Sort: TX Power</option>
+            <option value="aps">Sort: AP Count</option>
+          </select>
+        </div>
         <div class="results mt-2"></div>
       </div>
     </main>
@@ -599,6 +624,8 @@ const exportBtn = document.getElementById('exportBtn');
 const fitBtn = document.getElementById('fitBtn');
 const bgUpload = document.getElementById('bgUpload');
 const bgClear = document.getElementById('bgClear');
+const recVendor = document.getElementById('recVendor');
+const recSort = document.getElementById('recSort');
 
 const hudAdd = document.getElementById('hudAdd');
 const hudMove = document.getElementById('hudMove');
@@ -1588,7 +1615,16 @@ function showRecommendedDevices(cells, totalUsers){
   {brand:"Speedify", model:"R1", tx:18, maxUsers:15},
 ];
 
-  const recommended = devices
+  if (recVendor && recVendor.dataset.ready !== '1'){
+    const vendors = [...new Set(devices.map(d => d.brand))].sort((a, b) => a.localeCompare(b));
+    recVendor.innerHTML = `<option value="all">All vendors</option>${vendors.map(v => `<option value="${v}">${v}</option>`).join('')}`;
+    recVendor.dataset.ready = '1';
+  }
+
+  const selectedVendor = recVendor ? recVendor.value : 'all';
+  const selectedSort = recSort ? recSort.value : 'score';
+
+  let recommended = devices
     .map(device => {
       const unitsForUsers = Math.max(1, Math.ceil(totalUsers / device.maxUsers));
       const units = Math.max(recommendedApCount, unitsForUsers);
@@ -1605,9 +1641,23 @@ function showRecommendedDevices(cells, totalUsers){
         score
       };
     })
-    .filter(device => device.capacityHeadroom >= -10 && device.tx >= desiredTx - 6)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 8);
+    .filter(device => device.capacityHeadroom >= -10 && device.tx >= desiredTx - 6);
+
+  if (selectedVendor !== 'all'){
+    recommended = recommended.filter(device => device.brand === selectedVendor);
+  }
+
+  if (selectedSort === 'capacity'){
+    recommended.sort((a, b) => b.maxUsers - a.maxUsers || b.score - a.score);
+  } else if (selectedSort === 'tx'){
+    recommended.sort((a, b) => b.tx - a.tx || b.score - a.score);
+  } else if (selectedSort === 'aps'){
+    recommended.sort((a, b) => a.units - b.units || b.score - a.score);
+  } else {
+    recommended.sort((a, b) => b.score - a.score);
+  }
+
+  recommended = recommended.slice(0, 8);
 
   let recDiv = document.getElementById('recommendedDevices');
   if(!recDiv){
@@ -1630,6 +1680,7 @@ function showRecommendedDevices(cells, totalUsers){
         <h6>${device.brand} ${device.model}</h6>
         <p>Balanced for multi-AP planning with stronger live coverage flexibility.</p>
         <div class="recommendation-badges">
+          ${device === recommended[0] ? '<span class="rec-badge rec-badge-best">Best for current plan</span>' : ''}
           <span class="rec-badge">${device.units} APs</span>
           <span class="rec-badge">${device.usersPerAp} users/AP</span>
           <span class="rec-badge">TX ${device.tx} dBm</span>
@@ -1744,6 +1795,8 @@ PtxInput.addEventListener('input', ()=>{ PtxVal.textContent = PtxInput.value + '
 freqSel.addEventListener('change', computeAndRender);
 numUsersInput.addEventListener('input', ()=> showRecommendedDevices(cells, parseInt(numUsersInput.value) || 20));
 autoCount.addEventListener('input', ()=> showRecommendedDevices(cells, parseInt(numUsersInput.value) || 20));
+if (recVendor) recVendor.addEventListener('change', ()=> showRecommendedDevices(cells, parseInt(numUsersInput.value) || 20));
+if (recSort) recSort.addEventListener('change', ()=> showRecommendedDevices(cells, parseInt(numUsersInput.value) || 20));
 generateBtn.addEventListener('click', ()=>{ generateGrid(); computeAndRender(); });
 clearWallsBtn.addEventListener('click', ()=>{ walls = []; computeAndRender(); });
 clearAllBtn.addEventListener('click', ()=>{ walls=[]; aps=[]; computeAndRender(); });
